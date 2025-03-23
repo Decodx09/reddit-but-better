@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confessions</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f6f7f8;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            width: 50%;
+            max-width: 700px;
+        }
+        .confession-box {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            border: 1px solid #ddd;
+        }
+        .button {
+            cursor: pointer;
+            padding: 5px 15px;
+            border: none;
+            background: #0079d3;
+            color: white;
+            border-radius: 5px;
+            margin-right: 5px;
+        }
+        .comments-section {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f2f5;
+            border-radius: 5px;
+            border-left: 4px solid #0079d3;
+        }
+        textarea, input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Post a Confession</h2>
+        <textarea id="confessionText" placeholder="Your confession..."></textarea>
+        <input type="text" id="confessionCategory" placeholder="Category">
+        <button class="button" onclick="submitConfession()">Post</button>
+        <h2>Confessions</h2>
+        <div id="confessions"></div>
+    </div>
+
+    <script>
+        function loadConfessions() {
+            $.get("http://localhost:5004/confessions", function(data) {
+                let content = "";
+                data.forEach(conf => {
+                    content += `
+                        <div class='confession-box'>
+                            <p>${conf.text}</p>
+                            <small>Category: ${conf.category}</small>
+                            <br>
+                            <button class='button' onclick='upvote(${conf.id})'>⬆ Upvote</button>
+                            <span>${conf.upvotes}</span>
+                            <button class='button' onclick='downvote(${conf.id})'>⬇ Downvote</button>
+                            <span>${conf.downvotes}</span>
+                            <button class='button' onclick='toggleComment(${conf.id})'>💬 Comment</button>
+                            <div class='comments-section' id='comments-${conf.id}' style='display: none;'></div>
+                        </div>
+                    `;
+                });
+                $("#confessions").html(content);
+            });
+        }
+
+        function submitConfession() {
+            let text = $("#confessionText").val();
+            let category = $("#confessionCategory").val();
+            $.post("http://localhost:5004/confession", { text, category }, function() {
+                loadConfessions();
+            });
+        }
+
+        function upvote(id) {
+            $.post(`http://localhost:5004/upvote/${id}`, function() {
+                loadConfessions();
+            });
+        }
+
+        function downvote(id) {
+            $.post(`http://localhost:5004/downvote/${id}`, function() {
+                loadConfessions();
+            });
+        }
+
+        function toggleComment(confessionId) {
+            let commentBox = $(`#comments-${confessionId}`);
+            if (commentBox.is(':hidden')) {
+                $.get(`http://localhost:5004/comments/${confessionId}`, function(comments) {
+                    let commentContent = '<h4>Comments</h4>';
+                    comments.forEach(comment => {
+                        commentContent += `<p><b>${comment.username || 'User'}:</b> ${comment.text}</p>`;
+                    });
+                    commentContent += `<textarea id='commentText-${confessionId}' placeholder='Add a comment'></textarea>
+                                      <button class='button' onclick='addComment(${confessionId})'>Comment</button>`;
+                    commentBox.html(commentContent).show();
+                });
+            } else {
+                commentBox.hide();
+            }
+        }
+
+        function addComment(confessionId) {
+            let text = $(`#commentText-${confessionId}`).val();
+            $.post("http://localhost:5004/comment", { confessionId, text }, function() {
+                toggleComment(confessionId);
+            });
+        }
+
+        $(document).ready(loadConfessions);
+    </script>
+</body>
+</html>
