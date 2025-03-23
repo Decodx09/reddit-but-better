@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Audio Streaming</title>
+</head>
+<body>
+    <h1>Live Audio Streaming</h1>
+    <button id="start">Start Streaming</button>
+    <button id="stop" disabled>Stop Streaming</button>
+    <audio id="audio" controls autoplay></audio>
+
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <script>
+        const socket = io("http://localhost:3000");
+        let mediaRecorder;
+        
+        document.getElementById("start").addEventListener("click", async () => {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+
+            mediaRecorder.ondataavailable = (event) => {
+                socket.emit("audio-stream", event.data);
+            };
+
+            mediaRecorder.start(100); // Send audio chunks every 100ms
+            document.getElementById("start").disabled = true;
+            document.getElementById("stop").disabled = false;
+        });
+
+        document.getElementById("stop").addEventListener("click", () => {
+            mediaRecorder.stop();
+            document.getElementById("start").disabled = false;
+            document.getElementById("stop").disabled = true;
+        });
+
+        socket.on("audio-stream", (audioData) => {
+            const audioBlob = new Blob([audioData], { type: "audio/webm" });
+            const audioUrl = URL.createObjectURL(audioBlob);
+            const audioElement = document.getElementById("audio");
+            audioElement.src = audioUrl;
+        });
+    </script>
+</body>
+</html>

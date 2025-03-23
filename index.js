@@ -7,6 +7,11 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 require('dotenv').config();
 
+const socket = new WebSocket('ws://localhost:5004');
+socket.onopen = () => console.log("Connected to WebSocket");
+socket.onmessage = (event) => console.log("Received:", event.data);
+
+
 const app = express();
 app.use(express.json());
 app.use(cors());
@@ -152,6 +157,18 @@ app.get("/comments/:confessionId", (req, res) => {
         res.json(results);
     });
 });
+
+io.on('connection', (socket) => {
+    console.log('A user connected');
+    
+    socket.on('audio-stream', (data) => {
+      socket.broadcast.emit('audio-stream', data);
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('User disconnected');
+    });
+  });
 
 const PORT = 5004;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
